@@ -9,6 +9,7 @@ It mirrors the behavior of existing Windows firewall deployments by allowing TCP
 KhajuBridge is a firewall wrapper (scripts + nftables rules), not a compiled build. You need:
 
 - A Linux system that uses **systemd** and supports **nftables**
+- Basic familiarity with the Linux command line (running scripts, reading output)
 - **sudo/root** access (to load nftables rules and manage `/etc/khajubridge`)
 - **Psiphon Conduit installed and running as a systemd service**
   - default expected unit name: `conduit.service`
