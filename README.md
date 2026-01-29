@@ -84,6 +84,10 @@ CIDR lists change over time; regular updates via the provided script are recomme
 
 Always test firewall rules on non-critical systems before production use.
 
+Note: After cloning the repository, ensure scripts are executable:
+chmod +x scripts/*.sh
+
+
 ---
 
 ## 📝 Credits
