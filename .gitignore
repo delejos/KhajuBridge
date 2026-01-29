@@ -1,0 +1,13 @@
+# Editor / OS noise
+.DS_Store
+*.swp
+*.bak
+.vscode/
+.idea/
+
+# Runtime / test artifacts
+data/
+*.log
+
+# System-specific
+/etc/khajubridge/
