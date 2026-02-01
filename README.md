@@ -32,6 +32,19 @@ The firewall can be safely applied, updated, or removed at any time.
 
 ⚙️ How It Works
 
+## Optional Web Console
+
+KhajuBridge includes an optional, lightweight web console for local monitoring and basic operations
+(firewall apply, CIDR updates, Conduit status).
+
+- LAN-only by default
+- Stateless
+- Configured via an environment file
+- Designed for trusted networks
+
+See [`console/`](console/) for installation, configuration, and screenshots.
+
+
 KhajuBridge uses a three-stage model:
 
 1. Fetch Region CIDR Ranges
