@@ -166,6 +166,10 @@ V6_COUNT=0
 
 # Collect IPv4 CIDRs
 V4_CIDRS="$(count_and_collect_cidrs "$REGION_V4" 2> >(tee /dev/stderr) )" || true
+
+# Safety: strip COUNT=... lines in case stderr got mixed into CIDR output
+V4_CIDRS="$(printf '%s\n' "$V4_CIDRS" | grep -vE '^COUNT=[0-9]+$' || true)"
+
 # Extract COUNT from the helper's stderr line
 V4_COUNT="$(grep -Eo 'COUNT=[0-9]+' /dev/stderr 2>/dev/null | tail -n1 | cut -d= -f2 || true)"
 # The above COUNT extraction via /dev/stderr is brittle in some shells; do it in a safer way:
@@ -180,6 +184,10 @@ fi
 V6_CIDRS=""
 if [[ "$HAS_V6" -eq 1 ]]; then
   V6_CIDRS="$(count_and_collect_cidrs "$REGION_V6" 2> >(tee /dev/stderr) )" || true
+
+  # Safety: strip COUNT=... lines in case stderr got mixed into CIDR output
+  V6_CIDRS="$(printf '%s\n' "$V6_CIDRS" | grep -vE '^COUNT=[0-9]+$' || true)"
+
   if [[ -n "${V6_CIDRS:-}" ]]; then
     V6_COUNT="$(printf '%s\n' "$V6_CIDRS" | wc -l | tr -d '[:space:]')"
   else
