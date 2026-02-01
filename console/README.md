@@ -52,7 +52,8 @@ JOURNAL_TAIL=200
 
 # Allowed client CIDRs (comma-separated)
 ALLOW_CIDRS=127.0.0.1/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-Security Notes
+```
+## Security Notes
 The console is intended for trusted networks only
 
 Access is restricted by a CIDR allowlist
@@ -61,14 +62,14 @@ Commands are executed via tightly scoped sudo rules
 
 No authentication is implemented by design
 
-Philosophy
+## Philosophy
 Powered by Conduit — built with difficult networks in mind.
 
 The console intentionally avoids complexity, persistent state,
 and external dependencies. It is designed to remain understandable,
 auditable, and easy to remove.
 
-Status
+## Status
 This console is intentionally simple and stable.
 
 It is not meant to be a general-purpose management interface.
