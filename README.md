@@ -15,6 +15,10 @@ KhajuBridge is a firewall wrapper (scripts + nftables rules), not a compiled bui
   - default expected unit name: `conduit.service`
 - `curl` (used by `scripts/update_region_cidrs.sh` to fetch CIDR lists)
 
+## Conduit Optimization for Iran
+
+KhajuBridge is specifically designed to operate under Iranian network conditions, where aggressive filtering, throttling, and DPI affect Conduit performance.
+
 
 ――――――――――――――――――――――――――――――
 
