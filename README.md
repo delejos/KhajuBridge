@@ -1,8 +1,10 @@
-## KhajuBridge
+## Conduit for Iran – KhajuBridge
 
-KhajuBridge is a Linux-native firewall layer for Psiphon Conduit that enables region-aware connection prioritization, directing network access to where it is most needed as of January 2026. It is built on nftables with systemd cgroup scoping to apply precise, policy-driven traffic controls.
+KhajuBridge is a Linux-native firewall layer and Conduit bridge for Iran, designed to improve Psiphon Conduit reliability, bypass DPI, and optimize traffic under Iranian network censorship.
 
-KhajuBridge mirrors the behavior of existing Windows firewall deployments by allowing global TCP connectivity while selectively permitting UDP traffic for approved regions, all without modifying Conduit itself.
+It provides region-aware connection prioritization for Conduit by using nftables and systemd cgroup scoping, allowing high-bandwidth TCP access while selectively enabling UDP where it is most effective inside Iran.
+
+KhajuBridge mirrors the behavior of existing Psiphon Conduit firewall deployments without modifying Conduit itself.
 
 KhajuBridge is a firewall wrapper (scripts + nftables rules), not a compiled build. You need:
 
