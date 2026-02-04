@@ -1,9 +1,12 @@
 #!/usr/sbin/nft -f
 
-# KhajuBridge nftables ruleset (Normal mode)
-# Template: apply_firewall.sh replaces __CGROUP_ID__ at runtime
+# KhajuBridge nftables ruleset
+# Template: scripts/apply_firewall.sh replaces placeholders at runtime:
+#  - __CGROUP_ID__   (numeric cgroup id / inode) for meta cgroup matches
+#  - __CGROUP_PATH__ (cgroup v2 path) for socket cgroupv2 matches
 
-define CONDUIT_CGROUP = __CGROUP_ID__
+define CONDUIT_CGROUP_ID   = __CGROUP_ID__
+define CONDUIT_CGROUP_PATH = "__CGROUP_PATH__"
 
 table inet khajubridge {
 
@@ -21,23 +24,45 @@ table inet khajubridge {
   }
 
   #
-  # Outbound filtering — applies only to Conduit
+  # Inbound filtering — ONLY traffic destined to Conduit sockets (socket cgroupv2)
+  # Goal: allow Iran-only access to Conduit sockets (UDP + TCP),
+  # regardless of which ports Conduit opens.
+  #
+  chain input {
+    type filter hook input priority 0;
+    policy accept;
+
+    iif lo accept
+    ct state established,related accept
+
+    # Allow UDP packets reaching Conduit-owned sockets from Iran (IPv4/IPv6)
+    meta l4proto udp socket cgroupv2 level 2 $CONDUIT_CGROUP_PATH ip  saddr @region_ipv4 counter accept
+    meta l4proto udp socket cgroupv2 level 2 $CONDUIT_CGROUP_PATH ip6 saddr @region_ipv6 counter accept
+
+    # Drop UDP packets reaching Conduit-owned sockets from everywhere else
+    meta l4proto udp socket cgroupv2 level 2 $CONDUIT_CGROUP_PATH counter drop
+
+    # Drop TCP packets reaching Conduit-owned sockets from everywhere else
+    meta l4proto tcp socket cgroupv2 level 2 $CONDUIT_CGROUP_PATH counter drop
+  }
+
+  #
+  # Outbound filtering — applies only to Conduit process (meta cgroup id)
   #
   chain output {
     type filter hook output priority 0;
     policy accept;
 
     # TCP from Conduit: allow globally
-    meta cgroup $CONDUIT_CGROUP ip protocol tcp accept
-    meta cgroup $CONDUIT_CGROUP ip6 nexthdr tcp accept
+    meta cgroup $CONDUIT_CGROUP_ID ip  protocol tcp accept
+    meta cgroup $CONDUIT_CGROUP_ID ip6 nexthdr tcp accept
 
-    # UDP from Conduit: allow only to region CIDRs
-    meta cgroup $CONDUIT_CGROUP ip protocol udp ip daddr @region_ipv4 accept
-    meta cgroup $CONDUIT_CGROUP ip6 nexthdr udp ip6 daddr @region_ipv6 accept
+    # UDP from Conduit: allow only to Iran CIDRs
+    meta cgroup $CONDUIT_CGROUP_ID ip  protocol udp ip  daddr @region_ipv4 accept
+    meta cgroup $CONDUIT_CGROUP_ID ip6 nexthdr  udp ip6 daddr @region_ipv6 accept
 
     # UDP from Conduit: drop everything else
-    meta cgroup $CONDUIT_CGROUP ip protocol udp drop
-    meta cgroup $CONDUIT_CGROUP ip6 nexthdr udp drop
+    meta cgroup $CONDUIT_CGROUP_ID ip  protocol udp drop
+    meta cgroup $CONDUIT_CGROUP_ID ip6 nexthdr  udp drop
   }
 }
-

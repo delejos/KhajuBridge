@@ -2,8 +2,9 @@
 set -euo pipefail
 
 # KhajuBridge firewall apply script
-# - Resolves Conduit systemd cgroup ID dynamically
-# - Injects it into nftables rules
+# - Resolves Conduit systemd cgroup ID dynamically (for meta cgroup matches)
+# - Resolves Conduit systemd cgroup path dynamically (for socket cgroupv2 matches)
+# - Injects both into nftables rules
 # - Loads CIDR sets safely (bulk update)
 # - Guardrails: refuses to apply if template looks wrong
 # - Prints counts of CIDRs loaded into each set
@@ -67,7 +68,13 @@ if ! grep -q '__CGROUP_ID__' "$NFT_TEMPLATE"; then
   exit 1
 fi
 
-# ---- Resolve Conduit cgroup ID ----
+if ! grep -q '__CGROUP_PATH__' "$NFT_TEMPLATE"; then
+  echo "ERROR: $NFT_TEMPLATE is missing __CGROUP_PATH__ placeholder."
+  echo "Refusing to apply firewall."
+  exit 1
+fi
+
+# ---- Resolve Conduit cgroup path + ID ----
 CGROUP_PATH="$(systemctl show -p ControlGroup --value "$SERVICE_NAME" || true)"
 if [[ -z "$CGROUP_PATH" ]]; then
   echo "ERROR: Failed to read ControlGroup for $SERVICE_NAME"
@@ -86,7 +93,8 @@ if [[ -z "$CGROUP_ID" ]]; then
   exit 1
 fi
 
-echo "Resolved cgroup ID for $SERVICE_NAME: $CGROUP_ID"
+echo "Resolved cgroup path for $SERVICE_NAME: $CGROUP_PATH"
+echo "Resolved cgroup ID   for $SERVICE_NAME: $CGROUP_ID"
 
 # ---- Helpers: load/sanitize CIDRs and build bulk nft commands ----
 count_and_collect_cidrs() {
@@ -96,8 +104,6 @@ count_and_collect_cidrs() {
   local out
   local cnt
 
-  # Remove comments, trim whitespace, drop empty lines
-  # shellcheck disable=SC2002
   out="$(cat "$file" \
     | sed -E 's/[[:space:]]*#.*$//' \
     | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' \
@@ -108,7 +114,6 @@ count_and_collect_cidrs() {
     return 0
   fi
 
-  # Count lines robustly
   cnt="$(printf '%s\n' "$out" | wc -l | tr -d '[:space:]')"
   echo "COUNT=$cnt" >&2
   printf '%s\n' "$out"
@@ -116,12 +121,10 @@ count_and_collect_cidrs() {
 
 build_add_element_block() {
   # Build one or more "add element ... { ... }" lines with chunking to avoid overly long commands.
-  # Args: table set family addrcmd_prefix elements...
-  # Usage: build_add_element_block "inet khajubridge" "region_ipv4" "add element inet khajubridge region_ipv4" <elements on stdin>
   local family_table="$1"
   local setname="$2"
   local prefix="$3"
-  local max_per_line=200  # conservative chunk size; adjust if needed
+  local max_per_line=200
 
   local chunk=()
   local n=0
@@ -133,7 +136,6 @@ build_add_element_block() {
     n=$((n + 1))
 
     if [[ "$n" -ge "$max_per_line" ]]; then
-      # Emit chunk
       (IFS=,; echo "$prefix { ${chunk[*]} }")
       chunk=()
       n=0
@@ -152,7 +154,10 @@ trap 'rm -f "$TMP_NFT_RULES" "$TMP_NFT_SETS"' EXIT
 
 # ---- Render and load rules (replace only our table) ----
 echo "Rendering nftables table from template..."
-sed "s/__CGROUP_ID__/$CGROUP_ID/g" "$NFT_TEMPLATE" > "$TMP_NFT_RULES"
+# Use # as delimiter so ControlGroup paths (with /) substitute safely.
+sed -e "s/__CGROUP_ID__/$CGROUP_ID/g" \
+    -e "s#__CGROUP_PATH__#$CGROUP_PATH#g" \
+    "$NFT_TEMPLATE" > "$TMP_NFT_RULES"
 
 echo "Replacing nftables table inet $TABLE_NAME (scoped; does not flush global ruleset)..."
 sudo nft delete table inet "$TABLE_NAME" 2>/dev/null || true
@@ -164,28 +169,18 @@ echo "Preparing CIDR set updates..."
 V4_COUNT=0
 V6_COUNT=0
 
-# Collect IPv4 CIDRs
 V4_CIDRS="$(count_and_collect_cidrs "$REGION_V4" 2> >(tee /dev/stderr) )" || true
-
-# Safety: strip COUNT=... lines in case stderr got mixed into CIDR output
 V4_CIDRS="$(printf '%s\n' "$V4_CIDRS" | grep -vE '^COUNT=[0-9]+$' || true)"
 
-# Extract COUNT from the helper's stderr line
-V4_COUNT="$(grep -Eo 'COUNT=[0-9]+' /dev/stderr 2>/dev/null | tail -n1 | cut -d= -f2 || true)"
-# The above COUNT extraction via /dev/stderr is brittle in some shells; do it in a safer way:
-# Recompute count from V4_CIDRS:
 if [[ -n "${V4_CIDRS:-}" ]]; then
   V4_COUNT="$(printf '%s\n' "$V4_CIDRS" | wc -l | tr -d '[:space:]')"
 else
   V4_COUNT=0
 fi
 
-# Collect IPv6 CIDRs if present
 V6_CIDRS=""
 if [[ "$HAS_V6" -eq 1 ]]; then
   V6_CIDRS="$(count_and_collect_cidrs "$REGION_V6" 2> >(tee /dev/stderr) )" || true
-
-  # Safety: strip COUNT=... lines in case stderr got mixed into CIDR output
   V6_CIDRS="$(printf '%s\n' "$V6_CIDRS" | grep -vE '^COUNT=[0-9]+$' || true)"
 
   if [[ -n "${V6_CIDRS:-}" ]]; then
@@ -195,7 +190,6 @@ if [[ "$HAS_V6" -eq 1 ]]; then
   fi
 fi
 
-# Compose nft snippet for sets (flush + add in bulk)
 {
   echo "#!/usr/sbin/nft -f"
   echo ""
@@ -227,4 +221,3 @@ else
 fi
 
 echo "Firewall rules applied successfully."
-
