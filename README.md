@@ -25,7 +25,9 @@ KhajuBridge is specifically designed to operate under Iranian network conditions
 🚀 Overview
 
 KhajuBridge provides a transparent, non-invasive way to apply region-based network controls to Psiphon Conduit on Linux systems.
+
 KhajuBridge improves Conduit behavior under Iranian network conditions but does not, by itself, provide strict Iran-only exclusivity. Optional deployment layers can be used to enforce stronger regional isolation when required.
+
 Instead of patching or wrapping Conduit, KhajuBridge enforces policy entirely at the firewall level. Rules are scoped specifically to the Conduit process using its systemd cgroup, ensuring:
 
 •	No port-based assumptions
@@ -209,7 +211,7 @@ Because Conduit does not bind to a specific IP or port, this layer is implemente
 
 Layer 2 is stronger and more restrictive, and is intended for deployments where strict Iran-only enforcement is required.
 
-See: `docs/OPTION_A_DEDICATED_IP.md`
+See: `docs/OPTION_A_DEDICATED_IP.md` (advanced deployment)
 
 
 ――――――――――――――――――――――――――――――
