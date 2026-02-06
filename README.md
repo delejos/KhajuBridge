@@ -226,6 +226,29 @@ See: `docs/OPTION_A_DEDICATED_IP.md` (advanced deployment)
 •	No hardcoding: cgroup IDs are resolved dynamically at apply time.
 • Dedicated-IP deployments may additionally use SNAT to enforce network-layer identity (see Deployment Options).
 
+Optional: Weekly CIDR Refresh (Advanced / Operator-Managed)
+
+For long-running or production deployments, operators may choose to periodically refresh regional CIDR lists (e.g. Iran IP ranges) to account for upstream allocation changes.
+This project intentionally does not enable automatic updates by default, to avoid introducing operational risk.
+
+Recommended approach (operator-managed)
+
+Operators can implement a local systemd timer that:
+Fetches updated CIDR lists (e.g. weekly, not daily)
+Performs basic sanity checks (non-empty, reasonable size)
+Atomically replaces the CIDR files
+Re-applies nftables rules without restarting Conduit
+Does not reboot the system
+
+This automation should live outside the GitHub repository and be treated as a local operational addon.
+
+Important notes
+
+Automatic CIDR updates are optional
+No Conduit restart should be required
+Firewall rules should only be re-applied if the update succeeds
+Operators are responsible for validating their own data sources and update cadence
+This approach keeps the core setup stable while allowing experienced operators to opt into periodic maintenance if desired.
 
 ――――――――――――――――――――――――――――――
 
